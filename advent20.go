@@ -13,22 +13,22 @@ type IPRange struct {
 	min, max int64
 }
 
-// IPRangeReader holds a list of IP ranges read from a file
-type IPRangeReader []IPRange
+// IPRangeBlacklist holds a list of IP ranges read from a file
+type IPRangeBlacklist []IPRange
 
-func (ipRanges IPRangeReader) Len() int {
+func (ipRanges IPRangeBlacklist) Len() int {
 	return len(ipRanges)
 }
 
-func (ipRanges IPRangeReader) Swap(i, j int) {
+func (ipRanges IPRangeBlacklist) Swap(i, j int) {
 	ipRanges[i], ipRanges[j] = ipRanges[j], ipRanges[i]
 }
 
-func (ipRanges IPRangeReader) Less(i, j int) bool {
+func (ipRanges IPRangeBlacklist) Less(i, j int) bool {
 	return ipRanges[i].min < ipRanges[j].min
 }
 
-func (ipRanges *IPRangeReader) Read(p []byte) (n int, err error) {
+func (ipRanges *IPRangeBlacklist) Read(p []byte) (n int, err error) {
 	lines := strings.Split(string(p), "\n")
 	for _, line := range lines {
 		rangeArray := strings.Split(line, "-")
@@ -49,29 +49,61 @@ func (ipRanges *IPRangeReader) Read(p []byte) (n int, err error) {
 	return 0, nil
 }
 
+func (ipRanges *IPRangeBlacklist) removeOverlaps() {
+	nextRangeList := *ipRanges
+	var filteredRanges IPRangeBlacklist
+	sort.Sort(ipRanges)
+	for len(nextRangeList) > 0 {
+		var origMin, highestMax int64
+		for i, singleRange := range nextRangeList {
+			if i == 0 {
+				nextRangeList = nil
+				origMin = singleRange.min
+				highestMax = singleRange.max
+			}
+			if singleRange.min <= highestMax+1 {
+				if singleRange.max > highestMax {
+					highestMax = singleRange.max
+				}
+			} else if i != 0 {
+				nextRangeList = append(nextRangeList, singleRange)
+			}
+		}
+		filteredRanges = append(filteredRanges, IPRange{
+			min: origMin,
+			max: highestMax,
+		})
+	}
+	*ipRanges = filteredRanges
+}
+
+func (ipRanges IPRangeBlacklist) countPossibleIPs() int64 {
+	var prevRange IPRange
+	possibleIPCount := int64(1)
+	for i, singleRange := range ipRanges {
+		if i == 0 {
+			possibleIPCount += singleRange.min - 0
+		} else if i == len(ipRanges)-1 {
+			possibleIPCount += 4294967295 - singleRange.max
+		} else {
+			possibleIPCount += singleRange.min - prevRange.max - 1
+		}
+		prevRange = singleRange
+	}
+	return possibleIPCount
+}
+
 func main() {
 	contents, err := ioutil.ReadFile("input.txt")
-	var ranges IPRangeReader
+	var ranges IPRangeBlacklist
 	ranges.Read(contents)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
 
-	// gets the lowest range with overlaps filtered out
-	var lowestRange IPRange
-	sort.Sort(ranges)
-	highestMax := int64(0)
-	for i, v := range ranges {
-		fmt.Printf("Min: %v  Max: %v\n", v.min, v.max)
-		if i == 0 {
-			highestMax = v.max
-		}
-		if (v.min <= highestMax+1) && (v.max >= highestMax) {
-			highestMax = v.max
-		}
-	}
-
-	lowestRange.max = highestMax
-	lowestRange.min = int64(0)
-	fmt.Printf("Lowest Possible IP: %v\n", lowestRange.max+1)
+	ranges.removeOverlaps()
+	// Part 1
+	fmt.Printf("Lowest possible IP: %v\n", ranges[0].max+1)
+	// Part 2
+	fmt.Printf("Possible IPs: %v\n", ranges.countPossibleIPs())
 }
