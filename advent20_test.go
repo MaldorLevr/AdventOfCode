@@ -25,6 +25,31 @@ func TestRemoveOverlap(t *testing.T) {
 	}
 }
 
+func BenchmarkRemoveOverlaps(b *testing.B) {
+	contents, err := ioutil.ReadFile("input.txt")
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+	testRange.Read(contents)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		testRange.removeOverlaps()
+	}
+}
+
+func BenchmarkCountIPs(b *testing.B) {
+	contents, err := ioutil.ReadFile("input.txt")
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+	testRange.Read(contents)
+	testRange.removeOverlaps()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		testRange.countPossibleIPs()
+	}
+}
+
 func TestMain(m *testing.M) {
 	contents, err := ioutil.ReadFile("input.txt")
 	if err != nil {
