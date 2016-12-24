@@ -93,9 +93,10 @@ func main() {
 
 	// Part 2
 	// A general solution is very difficult so I just printed and solved by hand
-	// E represents and empty node
+	// E represents an empty node
 	// - represents a wall (large node which data cant be moved in our out of)
-	// * represents the goal zone (node which we can move data out of)
+	// * represents the goal zone (node which we need to move our data to)
+	// . represents a node with data we can move
 	// D represents the data we're moving
 	// Also, the printed x and y axis are switched
 	for x := range nodes {
