@@ -14,6 +14,7 @@ type Program struct {
 }
 
 func (program *Program) run() {
+	var toggles []int
 	for i := 0; i < len(program.instructions); i++ {
 		instructionParts := strings.Fields(program.instructions[i])
 		var x interface{}
@@ -40,16 +41,42 @@ func (program *Program) run() {
 
 		switch instructionParts[0] {
 		case "cpy":
-			y := y.(string)
-			program.copy(x, y)
+			if sliceContains(toggles, i) {
+				i += program.jnz(x, y) - 1
+			} else {
+				y := y.(string)
+				program.copy(x, y)
+			}
 		case "inc":
-			x := x.(string)
-			program.inc(x)
+			if sliceContains(toggles, i) {
+				x := x.(string)
+				program.dec(x)
+			} else {
+				x := x.(string)
+				program.inc(x)
+			}
 		case "dec":
-			x := x.(string)
-			program.dec(x)
+			if sliceContains(toggles, i) {
+				x := x.(string)
+				program.inc(x)
+			} else {
+				x := x.(string)
+				program.dec(x)
+			}
 		case "jnz":
-			i += program.jnz(x, y) - 1
+			if sliceContains(toggles, i) {
+				y := y.(string)
+				program.copy(x, y)
+			} else {
+				i += program.jnz(x, y) - 1
+			}
+		case "tgl":
+			if sliceContains(toggles, i) {
+				x := x.(string)
+				program.inc(x)
+			} else {
+				toggles = append(toggles, i+program.tgl(x))
+			}
 		}
 	}
 }
@@ -62,6 +89,15 @@ func isAlpha(s string) bool {
 		}
 	}
 	return true
+}
+
+func sliceContains(slice []int, x int) bool {
+	for _, v := range slice {
+		if v == x {
+			return true
+		}
+	}
+	return false
 }
 
 func (program *Program) copy(x interface{}, y string) {
@@ -121,6 +157,18 @@ func (program *Program) jnz(x interface{}, y interface{}) int {
 	return 1
 }
 
+func (program *Program) tgl(x interface{}) int {
+	switch t := x.(type) {
+	default:
+		fmt.Printf("unexpected type %T\n", t)
+	case int:
+		return x.(int)
+	case string:
+		return program.memory[x.(string)]
+	}
+	return 0
+}
+
 func (program *Program) read(p []byte) {
 	instructions := strings.Split(string(p), "\n")
 	program.memory = make(map[string]int)
@@ -134,14 +182,16 @@ func main() {
 
 	var program Program
 	program.read(contents)
-	program.run()
 	// Part 1
-	fmt.Printf("Value \"A\": %v\n", program.memory["a"])
-	// Part 2
-	program.clearMemory()
-	program.memory["c"] = 1
+	program.memory["a"] = 7
 	program.run()
-	fmt.Printf("Value \"A\" with c initialized to 1: %v\n", program.memory["a"])
+	fmt.Printf("Value \"A\" with a initialized to 7: %v\n", program.memory["a"])
+	// Part 2
+	// Works but takes a long time (around 20 mins on my machine)
+	program.clearMemory()
+	program.memory["a"] = 12
+	program.run()
+	fmt.Printf("Value \"A\" with a initialized to 12: %v\n", program.memory["a"])
 
 	if err != nil {
 		fmt.Printf("Error: %v\n", err.Error())
